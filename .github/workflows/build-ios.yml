@@ -26,6 +26,18 @@ jobs:
           echo "== Go Version =="
           go version
 
+      - name: "🔎 Show go.mod and Go toolchain details"
+        run: |
+          echo "=== go.mod (root) ==="
+          cat go.mod
+          echo ""
+          echo "=== go version ==="
+          go version
+          echo ""
+          echo "=== go env ==="
+          go env
+
+
       - name: "📦 Install gomobile and bind to XCFramework (REAL BUILD)"
         if: runner.os == 'macOS'
         run: |
