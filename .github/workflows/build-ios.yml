@@ -1,0 +1,65 @@
+# Trigger build and export of Kai VPN IPA
+name: Build IPA on GitHub macOS Runner
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    runs-on: macos-13
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.22'
+
+            - name: Prepare gomobile and Bind to XCFramework
+        run: |
+          mkdir -p gomobile-temp
+          cp -R mobilebridge gomobile-temp/mobilebridge
+          cd gomobile-temp
+
+          # Clone the full mobile repo locally to avoid nested package fetch issues
+          git clone https://go.googlesource.com/mobile mobile-local
+
+          go mod init tmp.kai.mobilebridge
+          go mod edit -replace=golang.org/x/mobile=./mobile-local
+          go mod tidy
+
+          # Install gomobile and gobind from the local repo
+          cd mobile-local
+          go install ./cmd/gomobile
+          go install ./cmd/gobind
+          cd ..
+          $HOME/go/bin/gomobile init
+
+          cd mobilebridge
+          $HOME/go/bin/gomobile bind \
+            -target=ios \
+            -o ../../output/TailscaleBridge.xcframework .
+
+
+      - name: Create IPA structure
+        run: |
+          mkdir -p output/Payload
+          mkdir -p output/SwiftGUI.app/Frameworks
+          cp -R output/TailscaleBridge.xcframework output/SwiftGUI.app/Frameworks/
+          mv output/SwiftGUI.app output/Payload/
+
+      - name: Archive and Export IPA
+        run: |
+          xcrun xcodebuild -exportArchive \
+            -archivePath output/SwiftGUI.xcarchive \
+            -exportOptionsPlist mobile/ios/ExportOptions.plist \
+            -exportPath output || true
+
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kai-ios-ipa
+          path: output/*.ipa
+
