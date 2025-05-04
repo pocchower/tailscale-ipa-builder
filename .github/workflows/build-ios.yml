@@ -31,29 +31,23 @@ jobs:
           # Initialize gomobile with SDKs
           $HOME/go/bin/gomobile init
 
-      - name: Bind Go code for iOS and Simulator
+
+      - name: Bind Go code and build device/simulator frameworks
         run: |
           mkdir -p output
           cd gomobile-temp/mobilebridge
 
-          # Build Go bindings for iOS devices (arm64)
-          $HOME/go/bin/gomobile bind -target=ios/arm64 -o ../../output/TailscaleBridge-arm64.framework .
+          # Build for real devices (arm64 iPhones)
+          mkdir -p ../../output/TailscaleBridge-arm64
+          $HOME/go/bin/gomobile bind \
+            -target=ios/arm64 \
+            -o ../../output/TailscaleBridge-arm64/TailscaleBridge.framework .
 
-          # Build Go bindings for Simulators (x86_64 and arm64)
-          $HOME/go/bin/gomobile bind -target=ios/arm64,ios/x86_64 -o ../../output/TailscaleBridge-sim.framework  .
-
-      - name: Bind Go code for iOS and Simulator
-        run: |
-          mkdir -p output
-          cd gomobile-temp/mobilebridge
-
-          # Build Go bindings for iOS devices (arm64)
-          $HOME/go/bin/gomobile bind -target=ios/arm64 -o ../../output/TailscaleBridge-arm64.framework .
-
-          # Build Go bindings for Simulators (x86_64 and arm64)
-          $HOME/go/bin/gomobile bind -target=ios/arm64,ios/x86_64 -o ../../output/TailscaleBridge-sim.framework .
-
-
+          # Build for simulators (x86_64 Intel + arm64 M1/M2 Macs)
+          mkdir -p ../../output/TailscaleBridge-sim
+          $HOME/go/bin/gomobile bind \
+            -target=ios/arm64,ios/x86_64 \
+            -o ../../output/TailscaleBridge-sim/TailscaleBridge.framework .
 
 
       - name: Create Xcode project structure
@@ -62,17 +56,11 @@ jobs:
           mkdir -p output/SwiftGUI.app/Frameworks
           cp -R TailscaleBridge.xcframework output/SwiftGUI.app/Frameworks/
 
-      - name: Create XCFramework from frameworks
+      - name: Create XCFramework from multiple .frameworks
         run: |
           xcodebuild -create-xcframework \
-            -framework output/TailscaleBridge-arm64.framework \
-            -framework output/TailscaleBridge-sim.framework \
-            -output output/TailscaleBridge.xcframework
-      - name: Create XCFramework from frameworks
-        run: |
-          xcodebuild -create-xcframework \
-            -framework output/TailscaleBridge-arm64.framework \
-            -framework output/TailscaleBridge-sim.framework \
+            -framework output/TailscaleBridge-arm64/TailscaleBridge.framework \
+            -framework output/TailscaleBridge-sim/TailscaleBridge.framework \
             -output output/TailscaleBridge.xcframework
 
       - name: Archive Xcode project
