@@ -36,6 +36,21 @@ jobs:
           mkdir -p output/SwiftGUI.app/Frameworks
           cp -R TailscaleBridge.xcframework output/SwiftGUI.app/Frameworks/
 
+      - name: Archive XCFramework
+        run: |
+          mkdir -p output
+          xcodebuild -create-xcframework \
+            -framework TailscaleBridge.xcframework \
+            -output output/SwiftGUI.xcframework
+
+          xcodebuild -scheme SwiftGUI \
+            -archivePath output/SwiftGUI.xcarchive \
+            -configuration Release \
+            -sdk iphoneos \
+            -allowProvisioningUpdates \
+            archive
+
+
       - name: Create IPA
         run: |
           cd output
