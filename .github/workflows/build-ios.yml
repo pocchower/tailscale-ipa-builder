@@ -32,22 +32,24 @@ jobs:
           $HOME/go/bin/gomobile init
 
 
-      - name: Bind Go code and build device/simulator frameworks
+      - name: Build .xcframework from Go mobilebridge
         run: |
           mkdir -p output
-          cd gomobile-temp/mobilebridge
+          cd gomobile-temp
+          go mod init tmp.kai.mobilebridge
 
-          # Build for real devices (arm64 iPhones)
-          mkdir -p ../../output/TailscaleBridge-arm64
-          $HOME/go/bin/gomobile bind \
-            -target=ios/arm64 \
-            -o ../../output/TailscaleBridge-arm64/TailscaleBridge.framework .
+          go install golang.org/x/mobile/cmd/gomobile@latest
+          go install golang.org/x/mobile/cmd/gobind@latest
+          $HOME/go/bin/gomobile init
 
-          # Build for simulators (x86_64 Intel + arm64 M1/M2 Macs)
-          mkdir -p ../../output/TailscaleBridge-sim
+          cd mobilebridge
+
+          # Let gomobile create a .xcframework directly
           $HOME/go/bin/gomobile bind \
             -target=ios/arm64,ios/x86_64 \
-            -o ../../output/TailscaleBridge-sim/TailscaleBridge.framework .
+            -o ../../output/TailscaleBridge.xcframework \
+            .
+      .
 
 
       - name: Create Xcode project structure
@@ -56,12 +58,6 @@ jobs:
           mkdir -p output/SwiftGUI.app/Frameworks
           cp -R TailscaleBridge.xcframework output/SwiftGUI.app/Frameworks/
 
-      - name: Create XCFramework from multiple .frameworks
-        run: |
-          xcodebuild -create-xcframework \
-            -framework output/TailscaleBridge-arm64/TailscaleBridge.framework \
-            -framework output/TailscaleBridge-sim/TailscaleBridge.framework \
-            -output output/TailscaleBridge.xcframework
 
       - name: Archive Xcode project
         run: |
@@ -83,3 +79,23 @@ jobs:
         with:
           name: kai-ios-ipa
           path: output/*.ipa
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
