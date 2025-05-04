@@ -16,30 +16,26 @@ jobs:
         with:
           go-version: '1.22'
 
-      - name: Prepare gomobile and Bind to XCFramework
+            - name: Prepare gomobile and Bind to XCFramework
         run: |
           mkdir -p gomobile-temp
           cp -R mobilebridge gomobile-temp/mobilebridge
           cd gomobile-temp
 
-          # Clone the full mobile repo locally to avoid nested package fetch issues
-          git clone https://go.googlesource.com/mobile mobile-local
-
           go mod init tmp.kai.mobilebridge
-          go mod edit -replace=golang.org/x/mobile=./mobile-local
+          go get golang.org/x/mobile@latest
           go mod tidy
 
-          # Install gomobile and gobind from the local repo
-          cd mobile-local
-          go install ./cmd/gomobile
-          go install ./cmd/gobind
-          cd ..
+          # Install gomobile and gobind from the installed module
+          go install golang.org/x/mobile/cmd/gomobile@latest
+          go install golang.org/x/mobile/cmd/gobind@latest
           $HOME/go/bin/gomobile init
 
           cd mobilebridge
           $HOME/go/bin/gomobile bind \
             -target=ios \
             -o ../../output/TailscaleBridge.xcframework .
+
 
       - name: Create IPA structure
         run: |
