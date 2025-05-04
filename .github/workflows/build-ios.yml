@@ -1,4 +1,3 @@
-# Trigger build and export of Kai VPN IPA
 name: Build IPA on GitHub macOS Runner
 
 on:
