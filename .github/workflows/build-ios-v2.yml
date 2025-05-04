@@ -1,4 +1,5 @@
 name: Build IPA on GitHub macOS Runner
+run-name: Reparse trigger
 
 on:
   workflow_dispatch:
