@@ -36,7 +36,8 @@ jobs:
           gomobile init
 
           echo "Binding package to XCFramework..."
-          gomobile bind -target=ios -o ./build_output/Mobile.xcframework ./path/to/your/package
+          gomobile bind -target=ios -o ./build_output/Mobile.xcframework ./mobileapi
+
 
       - name: "⚠️ Fallback: Simulate gomobile on Linux"
         if: runner.os != 'macOS'
