@@ -31,11 +31,6 @@ jobs:
           $HOME/go/bin/gomobile bind -target=ios -o ../../TailscaleBridge.xcframework .
 
 
-      - name: Build Tailscale iOS Framework
-        run: |
-          cd mobilebridge
-          $HOME/go/bin/gomobile bind -target=ios -o ../TailscaleBridge.xcframework .
-
       - name: Create Xcode project structure
         run: |
           mkdir -p output/Payload
