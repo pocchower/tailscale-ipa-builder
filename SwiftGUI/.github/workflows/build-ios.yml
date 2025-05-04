@@ -1,0 +1,127 @@
+name: Build iOS IPA
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    runs-on: macos-13
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.22'
+
+      - name: Build gomobile framework
+        run: |
+          mkdir -p gomobile-temp
+          cp -R mobilebridge gomobile-temp/mobilebridge
+          cd gomobile-temp
+
+          git clone https://go.googlesource.com/mobile mobile-local
+
+          go mod init tmp.kai.mobilebridge
+          go mod edit -replace=golang.org/x/mobile=./mobile-local
+          go mod tidy
+
+          cd mobile-local
+          go install ./cmd/gomobile
+          go install ./cmd/gobind
+          cd ..
+          $HOME/go/bin/gomobile init
+
+          cd mobilebridge
+          $HOME/go/bin/gomobile bind \
+            -target=ios \
+            -o ../../output/TailscaleBridge.xcframework .
+
+      - name: Create Swift GUI App
+        run: |
+          mkdir -p SwiftGUI/SwiftGUI
+          cd SwiftGUI
+
+          cat > SwiftGUI/ContentView.swift <<EOF
+          import SwiftUI
+          struct ContentView: View {
+              var body: some View {
+                  Text("Kai iOS GUI - Hello, world!")
+                      .padding()
+              }
+          }
+          EOF
+
+          cat > SwiftGUI/AppDelegate.swift <<EOF
+          import UIKit
+          class AppDelegate: UIResponder, UIApplicationDelegate {}
+          EOF
+
+          cat > SwiftGUI/Info.plist <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>CFBundleIdentifier</key>
+              <string>com.kai.SwiftGUI</string>
+              <key>CFBundleName</key>
+              <string>SwiftGUI</string>
+              <key>CFBundleVersion</key>
+              <string>1.0</string>
+              <key>UILaunchStoryboardName</key>
+              <string>LaunchScreen</string>
+              <key>UIApplicationSceneManifest</key>
+              <dict/>
+          </dict>
+          </plist>
+          EOF
+
+      - name: Copy XCFramework
+        run: |
+          mkdir -p SwiftGUI/Frameworks
+          cp -R output/TailscaleBridge.xcframework SwiftGUI/Frameworks/
+
+      - name: Archive App
+        run: |
+          xcodebuild archive \
+            -project SwiftGUI/SwiftGUI.xcodeproj \
+            -scheme SwiftGUI \
+            -archivePath output/SwiftGUI.xcarchive \
+            -destination 'generic/platform=iOS' \
+            SKIP_INSTALL=NO \
+            BUILD_LIBRARY_FOR_DISTRIBUTION=YES
+
+      - name: Export IPA
+        run: |
+          cat > ExportOptions.plist <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>method</key>
+              <string>ad-hoc</string>
+              <key>signingStyle</key>
+              <string>automatic</string>
+              <key>stripSwiftSymbols</key>
+              <true/>
+              <key>compileBitcode</key>
+              <false/>
+              <key>destination</key>
+              <string>export</string>
+          </dict>
+          </plist>
+          EOF
+
+          xcodebuild -exportArchive \
+            -archivePath output/SwiftGUI.xcarchive \
+            -exportOptionsPlist ExportOptions.plist \
+            -exportPath output
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: kai-ios-ipa
+          path: output/*.ipa
+
