@@ -1,9 +1,14 @@
+ HEAD
 name: Build Tailscale IPA for iOS
+
+name: Build IPA on GitHub macOS Runner
+ 2855eefd9 (Add local Tailscale iOS build system and workflow)
 
 on:
   workflow_dispatch:
 
 jobs:
+<<<<<<< HEAD
   build:
     name: Build IPA on GitHub macOS Runner
     runs-on: macos-latest
@@ -54,3 +59,81 @@ jobs:
       with:
         name: Tailscale-unsigned-ipa
         path: output/*.ipa
+=======
+  build-ios:
+    runs-on: macos-13
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Install Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.23.8'
+
+    - name: Install gomobile and init
+      run: |
+        go install golang.org/x/mobile/cmd/gomobile@latest
+        ~/go/bin/gomobile init
+
+    - name: Build .xcframework from mobilebridge
+      run: |
+        cd mobilebridge
+        ~/go/bin/gomobile bind -target=ios -o ../TailscaleBridge.xcframework
+
+    - name: Create minimal SwiftUI app
+      run: |
+        mkdir -p GUIApp/GUIApp
+        cd GUIApp/GUIApp
+
+        cat > ContentView.swift <<EOF
+        import SwiftUI
+        struct ContentView: View {
+            var body: some View {
+                Text("Kai VPN GUI")
+            }
+        }
+        EOF
+
+        cat > GUIAppApp.swift <<EOF
+        import SwiftUI
+        @main
+        struct GUIAppApp: App {
+            var body: some Scene {
+                WindowGroup {
+                    ContentView()
+                }
+            }
+        }
+        EOF
+
+        cd ..
+        swift package init --type executable
+
+    - name: Build IPA using Xcode CLI
+      run: |
+        xcodebuild -create-xcframework \
+          -framework TailscaleBridge.xcframework/ios-arm64/TailscaleBridge.framework \
+          -output CombinedTailscale.xcframework
+
+        xcodebuild -project GUIApp.xcodeproj \
+          -scheme GUIApp \
+          -destination 'generic/platform=iOS' \
+          -configuration Release \
+          clean archive \
+          -archivePath $RUNNER_TEMP/GUIApp.xcarchive \
+          CODE_SIGNING_ALLOWED=NO
+
+        xcodebuild -exportArchive \
+          -archivePath $RUNNER_TEMP/GUIApp.xcarchive \
+          -exportOptionsPlist mobile/ios/ExportOptions.plist \
+          -exportPath $RUNNER_TEMP/exportedIPA
+
+    - name: Upload Built IPA
+      uses: actions/upload-artifact@v3
+      with:
+        name: kai-ios-ipa
+        path: ${{ runner.temp }}/exportedIPA/*.ipa
+
+>>>>>>> 2855eefd9 (Add local Tailscale iOS build system and workflow)
