@@ -22,6 +22,10 @@ jobs:
           cp -R mobilebridge gomobile-temp/mobilebridge
           cd gomobile-temp
           go mod init tmp.kai.mobilebridge
+          go get golang.org/x/mobile/bind
+          go get golang.org/x/mobile/bind/objc
+          go mod tidy
+
 
           go install golang.org/x/mobile/cmd/gomobile@latest
           go install golang.org/x/mobile/cmd/gobind@latest
