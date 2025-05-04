@@ -1,9 +1,5 @@
 package mobilebridge
 
-import (
-    "fmt"
-)
-
 // Controller is the Swift-callable VPN manager
 type Controller struct{}
 
