@@ -32,9 +32,8 @@ jobs:
           $HOME/go/bin/gomobile init
 
           cd mobilebridge
-          $HOME/go/bin/gomobile bind \
-            -target=ios \
-            -o ../../output/TailscaleBridge.xcframework .
+          $HOME/go/bin/gomobile bind -target=ios -o ../../output/TailscaleBridge.xcframework .
+
 
       - name: Create IPA structure
         run: |
