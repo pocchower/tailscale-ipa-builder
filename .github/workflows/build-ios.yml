@@ -1,0 +1,56 @@
+name: Build Tailscale IPA for iOS
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build IPA on GitHub macOS Runner
+    runs-on: macos-latest
+    timeout-minutes: 60
+
+    steps:
+    - name: 🔁 Checkout Tailscale Code
+      uses: actions/checkout@v4
+
+    - name: 🧠 Install Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.22'
+
+    - name: 📦 Install Build Tools
+      run: |
+        brew install make
+
+    - name: 🧬 Generate Go-iOS Bindings
+      working-directory: ./mobile
+      run: |
+        make ios
+
+    - name: 🛠️ Build Archive with Xcode
+      run: |
+        cd mobile/ios
+        sed -i '' 's/com.tailscale.ios/com.pocchower.tailscale/' Tailscale.xcodeproj/project.pbxproj
+        xcodebuild -project Tailscale.xcodeproj \
+                   -scheme Tailscale \
+                   -destination 'generic/platform=iOS' \
+                   -configuration Release \
+                   clean archive \
+                   -archivePath ${{ github.workspace }}/Tailscale.xcarchive \
+                   CODE_SIGNING_ALLOWED=NO \
+                   CODE_SIGN_IDENTITY="" \
+                   PROVISIONING_PROFILE_SPECIFIER=""
+
+    - name: 📦 Export Unsigned IPA
+      run: |
+        xcodebuild -exportArchive \
+          -archivePath ${{ github.workspace }}/Tailscale.xcarchive \
+          -exportOptionsPlist ./mobile/ios/ExportOptions.plist \
+          -exportPath ${{ github.workspace }}/output \
+          -allowProvisioningUpdates
+
+    - name: ☁️ Upload IPA Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: Tailscale-unsigned-ipa
+        path: output/*.ipa
