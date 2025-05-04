@@ -21,13 +21,39 @@ jobs:
           mkdir -p gomobile-temp
           cp -R mobilebridge gomobile-temp/mobilebridge
           cd gomobile-temp
+
+          # Create a temporary Go module
           go mod init tmp.kai.mobilebridge
           go get golang.org/x/mobile/bind
           go install golang.org/x/mobile/cmd/gomobile@latest
           go install golang.org/x/mobile/cmd/gobind@latest
+
+          # Initialize gomobile with SDKs
           $HOME/go/bin/gomobile init
-          cd mobilebridge
-          $HOME/go/bin/gomobile bind -target=ios -o ../../TailscaleBridge.xcframework .
+
+      - name: Bind Go code for iOS and Simulator
+        run: |
+          mkdir -p output
+          cd gomobile-temp/mobilebridge
+
+          # Build Go bindings for iOS devices (arm64)
+          $HOME/go/bin/gomobile bind -target=ios/arm64 -o ../../output/TailscaleBridge-arm64.framework .
+
+          # Build Go bindings for Simulators (x86_64 and arm64)
+          $HOME/go/bin/gomobile bind -target=ios/arm64,ios/x86_64 -o ../../output/TailscaleBridge-sim.framework  .
+
+      - name: Bind Go code for iOS and Simulator
+        run: |
+          mkdir -p output
+          cd gomobile-temp/mobilebridge
+
+          # Build Go bindings for iOS devices (arm64)
+          $HOME/go/bin/gomobile bind -target=ios/arm64 -o ../../output/TailscaleBridge-arm64.framework .
+
+          # Build Go bindings for Simulators (x86_64 and arm64)
+          $HOME/go/bin/gomobile bind -target=ios/arm64,ios/x86_64 -o ../../output/TailscaleBridge-sim.framework .
+
+
 
 
       - name: Create Xcode project structure
@@ -36,27 +62,29 @@ jobs:
           mkdir -p output/SwiftGUI.app/Frameworks
           cp -R TailscaleBridge.xcframework output/SwiftGUI.app/Frameworks/
 
-      - name: Archive XCFramework
+      - name: Create XCFramework from frameworks
         run: |
-          mkdir -p output
           xcodebuild -create-xcframework \
-            -framework TailscaleBridge.xcframework \
-            -output output/SwiftGUI.xcframework
-
-          xcodebuild -scheme SwiftGUI \
-            -archivePath output/SwiftGUI.xcarchive \
-            -configuration Release \
-            -sdk iphoneos \
-            -allowProvisioningUpdates \
-            archive
-
-
-      - name: Create IPA
+            -framework output/TailscaleBridge-arm64.framework \
+            -framework output/TailscaleBridge-sim.framework \
+            -output output/TailscaleBridge.xcframework
+      - name: Create XCFramework from frameworks
         run: |
-          cd output
-          mkdir -p Payload
-          mv SwiftGUI.app Payload/
-          cd ..
+          xcodebuild -create-xcframework \
+            -framework output/TailscaleBridge-arm64.framework \
+            -framework output/TailscaleBridge-sim.framework \
+            -output output/TailscaleBridge.xcframework
+
+      - name: Archive Xcode project
+        run: |
+          mkdir -p output/SwiftGUI.app/Frameworks
+          cp -R output/TailscaleBridge.xcframework output/SwiftGUI.app/Frameworks/
+
+          mkdir -p output/Payload
+          mv output/SwiftGUI.app output/Payload/
+
+      - name: Create IPA using ExportOptions.plist
+        run: |
           xcrun xcodebuild -exportArchive \
             -archivePath output/SwiftGUI.xcarchive \
             -exportOptionsPlist mobile/ios/ExportOptions.plist \
@@ -67,4 +95,3 @@ jobs:
         with:
           name: kai-ios-ipa
           path: output/*.ipa
-
