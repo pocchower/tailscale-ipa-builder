@@ -1,10 +1,8 @@
-// Trigger: dummy change to re-run GitHub Actions
-cd ~/tailscale-ipa-builder/mobileapi
-nano mobileapi.go
 package mobileapi
 
 type Greeter struct{}
 
+// Hello is an exported method accessible by gomobile bind
 func (Greeter) Hello(name string) string {
 	return "Hello, " + name
 }
