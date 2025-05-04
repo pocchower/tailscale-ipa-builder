@@ -1,3 +1,4 @@
+nano .github/workflows/build-ios.yml
 name: Build IPA on GitHub macOS Runner
 
 on:
@@ -16,16 +17,19 @@ jobs:
         with:
           go-version: '1.22'
 
-      - name: Install gomobile + required bindings
+      - name: Prepare gomobile build context
         run: |
+          mkdir -p gomobile-temp
+          cp -R mobilebridge gomobile-temp/mobilebridge
+          cd gomobile-temp
+          go mod init tmp.kai.mobilebridge
+          go get golang.org/x/mobile/bind
           go install golang.org/x/mobile/cmd/gomobile@latest
           go install golang.org/x/mobile/cmd/gobind@latest
-          go install golang.org/x/mobile/bind@latest || true
-          mkdir -p tempmod && cd tempmod
-          go mod init tmp.kai.build
-          go get golang.org/x/mobile/bind
-          cd ..
           $HOME/go/bin/gomobile init
+          cd mobilebridge
+          $HOME/go/bin/gomobile bind -target=ios -o ../../TailscaleBridge.xcframework .
+
 
       - name: Build Tailscale iOS Framework
         run: |
