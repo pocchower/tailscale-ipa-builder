@@ -6,7 +6,6 @@ on:
 jobs:
   build-ios:
     runs-on: macos-13
-3
 
     steps:
       - name: Checkout source code
