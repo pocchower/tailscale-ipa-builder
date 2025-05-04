@@ -8,19 +8,34 @@ jobs:
     runs-on: macos-13
 
     steps:
-      - name: "Main Checkout source code"
+      - name: "📥 Checkout source code"
         uses: actions/checkout@v4
 
-      - name: "Main Set up Go"
+      - name: "🧰 Set up Go"
         uses: actions/setup-go@v4
         with:
-          go-version: '1.23.8'
+          go-version: '1.21.5' # Ensure compatible Go version for gomobile
 
-      - name: "Prepare gomobile and bind to XCFramework (Real macOS only)"
+      - name: "🔍 Verify macOS, Xcode, and Go"
+        run: |
+          echo "== SYSTEM INFO =="
+          uname -a
+          sw_vers
+          echo "== Xcode Version =="
+          xcodebuild -version
+          echo "== Go Version =="
+          go version
+
+      - name: "📦 Install gomobile and bind to XCFramework (REAL BUILD)"
         if: runner.os == 'macOS'
         run: |
+          echo "Installing gomobile..."
           go install golang.org/x/mobile/cmd/gomobile@latest
+
+          echo "Initializing gomobile..."
           gomobile init
+
+          echo "Binding package to XCFramework..."
           gomobile bind -target=ios -o ./build_output/Mobile.xcframework ./path/to/your/package
 
       - name: "⚠️ Fallback: Simulate gomobile on Linux"
@@ -31,13 +46,19 @@ jobs:
           echo "Simulated Mobile.framework" > build_output/Mobile.xcframework/ios-arm64/Mobile.framework
           echo "Mock Info.plist" > build_output/Mobile.xcframework/ios-arm64/Info.plist
 
-      - name: "🧪 Simulate iOS Packaging"
+      - name: "🧪 Simulate IPA Packaging (Linux only)"
         if: runner.os != 'macOS'
         run: |
           mkdir -p build_output
           echo "FAKE IPA GENERATED UNDER LINUX" > build_output/App.ipa
 
-      - name: "📦 Upload Artifact (.ipa)"
+      - name: "✅ Create placeholder App.ipa (macOS only)"
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p build_output
+          echo "Real gomobile build complete. Placeholder IPA created for demonstration." > build_output/App.ipa
+
+      - name: "📤 Upload .ipa Artifact"
         uses: actions/upload-artifact@v4
         with:
           name: ios-artifact
