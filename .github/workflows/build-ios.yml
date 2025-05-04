@@ -16,9 +16,15 @@ jobs:
         with:
           go-version: '1.22'
 
-      - name: Install gomobile
+      - name: Install gomobile + required bindings
         run: |
           go install golang.org/x/mobile/cmd/gomobile@latest
+          go install golang.org/x/mobile/cmd/gobind@latest
+          go install golang.org/x/mobile/bind@latest || true
+          mkdir -p tempmod && cd tempmod
+          go mod init tmp.kai.build
+          go get golang.org/x/mobile/bind
+          cd ..
           $HOME/go/bin/gomobile init
 
       - name: Build Tailscale iOS Framework
