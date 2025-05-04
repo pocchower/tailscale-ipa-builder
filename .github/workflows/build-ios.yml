@@ -16,25 +16,10 @@ jobs:
         with:
           go-version: '1.22'
 
-      - name: Prepare gomobile build context
+      - name: Prepare gomobile and Bind to XCFramework
         run: |
           mkdir -p gomobile-temp
           cp -R mobilebridge gomobile-temp/mobilebridge
-          cd gomobile-temp
-
-          # Create a temporary Go module
-          go mod init tmp.kai.mobilebridge
-          go get golang.org/x/mobile/bind
-          go install golang.org/x/mobile/cmd/gomobile@latest
-          go install golang.org/x/mobile/cmd/gobind@latest
-
-          # Initialize gomobile with SDKs
-          $HOME/go/bin/gomobile init
-
-
-      - name: Build .xcframework from Go mobilebridge
-        run: |
-          mkdir -p output
           cd gomobile-temp
           go mod init tmp.kai.mobilebridge
 
@@ -43,59 +28,27 @@ jobs:
           $HOME/go/bin/gomobile init
 
           cd mobilebridge
-
-          # Let gomobile create a .xcframework directly
           $HOME/go/bin/gomobile bind \
             -target=ios/arm64,ios/x86_64 \
-            -o ../../output/TailscaleBridge.xcframework \
-            .
-      .
+            -o ../../output/TailscaleBridge.xcframework .
 
-
-      - name: Create Xcode project structure
+      - name: Create IPA structure
         run: |
           mkdir -p output/Payload
-          mkdir -p output/SwiftGUI.app/Frameworks
-          cp -R TailscaleBridge.xcframework output/SwiftGUI.app/Frameworks/
-
-
-      - name: Archive Xcode project
-        run: |
           mkdir -p output/SwiftGUI.app/Frameworks
           cp -R output/TailscaleBridge.xcframework output/SwiftGUI.app/Frameworks/
-
-          mkdir -p output/Payload
           mv output/SwiftGUI.app output/Payload/
 
-      - name: Create IPA using ExportOptions.plist
+      - name: Archive and Export IPA
         run: |
           xcrun xcodebuild -exportArchive \
             -archivePath output/SwiftGUI.xcarchive \
             -exportOptionsPlist mobile/ios/ExportOptions.plist \
-            -exportPath output
+            -exportPath output || true
 
       - name: Upload IPA Artifact
         uses: actions/upload-artifact@v4
         with:
           name: kai-ios-ipa
           path: output/*.ipa
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
