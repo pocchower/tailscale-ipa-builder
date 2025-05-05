@@ -99,7 +99,7 @@ jobs:
           -exportPath $PWD/build/ipa
 
     - name: Upload IPA
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: MobileAPI-App
         path: iosApp/build/ipa/MobileApp.ipa
