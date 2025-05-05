@@ -1,57 +1,105 @@
-name: Build IPA on GitHub macOS Runner
+name: Build iOS IPA with MobileAPI Framework
 
 on:
+  push:
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
-  build-ios:
-    runs-on: macos-13
+  build:
+    runs-on: macos-latest
+
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_15.2.app/Contents/Developer
 
     steps:
-      - name: Checkout source code
-        uses: actions/checkout@v3
+    - name: Checkout code
+      uses: actions/checkout@v3
 
-      - name: Set up Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: '1.22'
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.23.x'
 
-      - name: Prepare gomobile and bind to XCFramework
-        shell: bash
-        run: |
-          mkdir -p gomobile-temp
-          cp -R mobilebridge gomobile-temp/mobilebridge
-          cd gomobile-temp
+    - name: Install gomobile
+      run: |
+        go install golang.org/x/mobile/cmd/gomobile@latest
+        gomobile init
 
-          go mod init tmp.kai.mobilebridge
-          go get golang.org/x/mobile@v0.0.0-20250408133729-978277e7eaf7
-          go mod tidy
+    - name: Build MobileAPI.xcframework
+      working-directory: ./mobileapi
+      run: |
+        gomobile bind -target=ios -o MobileAPI.xcframework
 
-          go install golang.org/x/mobile/cmd/gomobile@v0.0.0-20250408133729-978277e7eaf7
-          go install golang.org/x/mobile/cmd/gobind@v0.0.0-20250408133729-978277e7eaf7
-          $HOME/go/bin/gomobile init
+    - name: Create iOS App (if not exists)
+      run: |
+        mkdir -p iosApp
+        cd iosApp
+        cat > Info.plist <<EOF
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+         "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+          <key>CFBundleName</key>
+          <string>MobileApp</string>
+          <key>CFBundleIdentifier</key>
+          <string>com.example.mobileapi</string>
+          <key>CFBundleVersion</key>
+          <string>1.0</string>
+          <key>CFBundleExecutable</key>
+          <string>MobileApp</string>
+          <key>CFBundlePackageType</key>
+          <string>APPL</string>
+        </dict>
+        </plist>
+        EOF
 
-          cd mobilebridge
-          $HOME/go/bin/gomobile bind -target=ios -o ../../output/TailscaleBridge.xcframework .
+    - name: Generate Dummy App Xcode Project
+      run: |
+        mkdir -p iosApp/MobileApp
+        cd iosApp/MobileApp
+        cat > main.swift <<EOF
+        import UIKit
+        import MobileAPI
 
-          - run: go install golang.org/x/mobile/cmd/gomobile@v0.0.0-20250408133729-978277e7eaf7
-      - name: Create IPA structure
-        run: |
-          mkdir -p output/Payload
-          mkdir -p output/SwiftGUI.app/Frameworks
-          cp -R output/TailscaleBridge.xcframework output/SwiftGUI.app/Frameworks/
-          mv output/SwiftGUI.app output/Payload/
+        @UIApplicationMain
+        class AppDelegate: UIResponder, UIApplicationDelegate {
+            var window: UIWindow?
+            func application(_ application: UIApplication,
+                             didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+                return true
+            }
+        }
+        EOF
 
-      - name: Archive and Export IPA
-        run: |
-          xcrun xcodebuild -exportArchive \
-            -archivePath output/SwiftGUI.xcarchive \
-            -exportOptionsPlist mobile/ios/ExportOptions.plist \
-            -exportPath output || true
+    - name: Copy MobileAPI.xcframework into App
+      run: |
+        cp -R mobileapi/MobileAPI.xcframework iosApp/MobileApp/
 
-      - name: Upload IPA Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: kai-ios-ipa
-          path: output/*.ipa
+    - name: Archive the App
+      run: |
+        xcodebuild -create-xcframework \
+          -framework iosApp/MobileApp/MobileAPI.xcframework/ios-arm64/MobileAPI.framework \
+          -framework iosApp/MobileApp/MobileAPI.xcframework/ios-arm64_x86_64-simulator/MobileAPI.framework \
+          -output iosApp/MobileApp/MobileAPI.xcframework
 
+        xcodebuild \
+          -project iosApp/MobileApp.xcodeproj \
+          -scheme MobileApp \
+          -sdk iphoneos \
+          -configuration Release \
+          -archivePath $PWD/build/MobileApp.xcarchive archive
+
+    - name: Export IPA
+      run: |
+        xcodebuild -exportArchive \
+          -archivePath $PWD/build/MobileApp.xcarchive \
+          -exportOptionsPlist ExportOptions.plist \
+          -exportPath $PWD/build/ipa
+
+    - name: Upload IPA
+      uses: actions/upload-artifact@v3
+      with:
+        name: MobileAPI-App
+        path: iosApp/build/ipa/MobileApp.ipa
