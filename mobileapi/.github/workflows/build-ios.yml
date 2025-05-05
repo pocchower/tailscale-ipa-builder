@@ -1,0 +1,43 @@
+name: Build iOS XCFramework
+
+on:
+  push:
+    branches:
+      - main
+   workflow_dispatch:
+
+jobs:
+  build-ios-xcframework:
+    runs-on: macos-latest
+    name: Bind Go module into XCFramework
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go 1.23
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Install gomobile and initialize
+        run: |
+          go install golang.org/x/mobile/cmd/gomobile@latest
+          echo "GOMOBILE=$(go env GOPATH)/bin/gomobile" >> $GITHUB_ENV
+          "$(go env GOPATH)/bin/gomobile" init
+
+      - name: Tidy Go modules (mobileapi)
+        working-directory: ./mobileapi
+        run: |
+          go mod tidy
+
+      - name: Build iOS XCFramework
+        working-directory: ./mobileapi
+        run: |
+          "$(go env GOPATH)/bin/gomobile" bind -target=ios -o MobileAPI.xcframework github.com/pocchower/mobileapi
+
+      - name: Upload MobileAPI.xcframework
+        uses: actions/upload-artifact@v4
+        with:
+          name: MobileAPI.xcframework
+          path: mobileapi/MobileAPI.xcframework
