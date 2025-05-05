@@ -18,17 +18,15 @@ jobs:
           go-version: '1.23.8'
           check-latest: true
 
-      - name: Print Go version
-        env:
-          GOTOOLCHAIN: local
-        run: go version
-
-      - name: Run go mod tidy (before gomobile)
+      - name: Ensure go.mod is clean
         env:
           GOTOOLCHAIN: local
         run: |
           go mod tidy
-          git diff --exit-code || (echo "go.mod or go.sum is dirty after tidy" && exit 1)
+          if ! git diff --exit-code go.mod go.sum; then
+            echo "::error file=go.mod::go.mod or go.sum is dirty after tidy. Please commit them."
+            exit 1
+          fi
 
       - name: Install gomobile
         env:
