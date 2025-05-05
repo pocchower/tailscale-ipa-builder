@@ -1,0 +1,29 @@
+name: iOS IPA Builder
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.22.3'
+
+      - name: Install gomobile
+        run: |
+          go install golang.org/x/mobile/cmd/gomobile@latest
+          gomobile init
+
+      - name: Run go build
+        run: |
+          cd mobileapi
+          go mod tidy
+          gomobile bind -target=ios -v -o MobileFramework.framework github.com/pocchower/mobileapi
+
