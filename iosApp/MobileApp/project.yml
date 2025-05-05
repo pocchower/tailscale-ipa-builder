@@ -1,0 +1,30 @@
+name: MobileApp
+options:
+  bundleIdPrefix: com.kai
+  deploymentTarget:
+    iOS: '14.0'
+targets:
+  MobileApp:
+    type: application
+    platform: iOS
+    sources: [Sources]
+    resources: []
+    dependencies:
+      - framework: MobileAPI.xcframework
+    info:
+      path: Info.plist
+      properties:
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "1"
+        UILaunchStoryboardName: "LaunchScreen"
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        UIRequiredDeviceCapabilities: [armv7]
+        CFBundleExecutable: MobileApp
+    settings:
+      base:
+        SWIFT_VERSION: 5.0
+        CODE_SIGN_STYLE: Automatic
+        ENABLE_BITCODE: NO
+

@@ -1,0 +1,8 @@
+framework module "MobileAPI" {
+	header "ref.h"
+    header "Mobileapi.objc.h"
+    header "Universe.objc.h"
+    header "MobileAPI.h"
+
+    export *
+}
