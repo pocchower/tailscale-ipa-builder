@@ -19,6 +19,8 @@ jobs:
           check-latest: true
 
       - name: Print Go Version
+        env:
+          GOTOOLCHAIN: local
         run: go version
 
       - name: Install gomobile + tidy
@@ -30,7 +32,10 @@ jobs:
           gomobile init
 
       - name: Bind to XCFramework
+        env:
+          GOTOOLCHAIN: local
         run: |
+          mkdir -p ios_output
           gomobile bind -target=ios -v -o ios_output/MyLib.xcframework ./mobileapi
 
       - name: Upload XCFramework
