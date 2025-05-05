@@ -1,80 +1,43 @@
-name: Build IPA on GitHub macOS Runner
+name: Build iOS XCFramework
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - main  # Change if using a different branch
 
 jobs:
-  build-ios:
-    runs-on: macos-13
+  build-ios-xcframework:
+    runs-on: macos-latest
+    name: Bind Go module into XCFramework
 
     steps:
-      - name: "📥 Checkout source code"
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Go
-        uses: actions/setup-go@v4
+      - name: Set up Go 1.23
+        uses: actions/setup-go@v5
         with:
-          go-version: '1.23.8'
-          check-latest: true
+          go-version: '1.23'
 
-      - name: "🔍 Verify macOS, Xcode, and Go"
+      - name: Install gomobile and initialize
         run: |
-          echo "== SYSTEM INFO =="
-          uname -a
-          sw_vers
-          echo "== Xcode Version =="
-          xcodebuild -version
-          echo "== Go Version =="
-          go version
-
-      - name: "🔎 Show go.mod and Go toolchain details"
-        run: |
-          echo "=== go.mod (root) ==="
-          cat go.mod
-          echo ""
-          echo "=== go version ==="
-          go version
-          echo ""
-          echo "=== go env ==="
-          go env
-
-
-      - name: "📦 Install gomobile and bind to XCFramework (REAL BUILD)"
-        if: runner.os == 'macOS'
-        run: |
-          echo "Installing gomobile..."
           go install golang.org/x/mobile/cmd/gomobile@latest
+          echo "GOMOBILE=$(go env GOPATH)/bin/gomobile" >> $GITHUB_ENV
+          $GITHUB_ENV
+          $(go env GOPATH)/bin/gomobile init
 
-          echo "Initializing gomobile..."
-          gomobile init
-
-          echo "Binding package to XCFramework..."
-          gomobile bind -target=ios -o ./build_output/Mobile.xcframework github.com/pocchower/mobileapi
-
-
-      - name: "⚠️ Fallback: Simulate gomobile on Linux"
-        if: runner.os != 'macOS'
+      - name: Tidy Go modules (mobileapi)
+        working-directory: ./mobileapi
         run: |
-          echo "⚠️  Linux runner detected - simulating gomobile output"
-          mkdir -p build_output/Mobile.xcframework/ios-arm64
-          echo "Simulated Mobile.framework" > build_output/Mobile.xcframework/ios-arm64/Mobile.framework
-          echo "Mock Info.plist" > build_output/Mobile.xcframework/ios-arm64/Info.plist
+          go mod tidy
 
-      - name: "🧪 Simulate IPA Packaging (Linux only)"
-        if: runner.os != 'macOS'
+      - name: Build iOS XCFramework
+        working-directory: ./mobileapi
         run: |
-          mkdir -p build_output
-          echo "FAKE IPA GENERATED UNDER LINUX" > build_output/App.ipa
+          $(go env GOPATH)/bin/gomobile bind -target=ios -o MobileAPI.xcframework github.com/pocchower/mobileapi
 
-      - name: "✅ Create placeholder App.ipa (macOS only)"
-        if: runner.os == 'macOS'
-        run: |
-          mkdir -p build_output
-          echo "Real gomobile build complete. Placeholder IPA created for demonstration." > build_output/App.ipa
-
-      - name: "📤 Upload .ipa Artifact"
+      - name: Upload MobileAPI.xcframework
         uses: actions/upload-artifact@v4
         with:
-          name: ios-artifact
-          path: build_output/App.ipa
-
+          name: MobileAPI.xcframework
+          path: mobileapi/MobileAPI.xcframework
