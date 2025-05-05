@@ -16,26 +16,24 @@ jobs:
         uses: actions/setup-go@v4
         with:
           go-version: '1.23.8'
+          check-latest: true
 
-      - name: Show system info
-        run: |
-          echo "== SYSTEM INFO =="
-          sw_vers
-          echo "== Xcode Version =="
-          xcodebuild -version
-          echo "== Go Version =="
-          go version
+      - name: Print Go Version
+        run: go version
 
-      - name: Tidy go.mod
+      - name: Install gomobile + tidy
         run: |
           go mod tidy
-
-      - name: Install gomobile
-        run: |
           go install golang.org/x/mobile/cmd/gomobile@latest
           gomobile init
 
-      - name: Run go build
+      - name: Bind to XCFramework
         run: |
           gomobile bind -target=ios -v -o ios_output/MyLib.xcframework ./mobileapi
+
+      - name: Upload XCFramework
+        uses: actions/upload-artifact@v4
+        with:
+          name: MyLib
+          path: ios_output/MyLib.xcframework
 
