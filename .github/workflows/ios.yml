@@ -22,6 +22,8 @@ jobs:
         run: go version
 
       - name: Install gomobile + tidy
+        env:
+          GOTOOLCHAIN: local
         run: |
           go mod tidy
           go install golang.org/x/mobile/cmd/gomobile@latest
