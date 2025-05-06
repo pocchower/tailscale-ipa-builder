@@ -42,9 +42,7 @@ jobs:
           -sdk iphoneos \
           -configuration Release \
           -archivePath ./build/MobileApp.xcarchive \
-          CODE_SIGN_STYLE=Automatic \
-          DEVELOPMENT_TEAM=<YOUR_TEAM_ID> \
-          CODE_SIGN_IDENTITY="Apple Development"
+          CODE_SIGN_STYLE=Automatic
 
     - name: Export .ipa (for AltStore)
       run: |
@@ -64,8 +62,7 @@ jobs:
           <string>export</string>
           <key>stripSwiftSymbols</key>
           <true/>
-          <key>teamID</key>
-          <string><YOUR_TEAM_ID></string>
+          <!-- No team ID provided for AltStore auto-signing -->
         </dict>
         </plist>
         EOF
