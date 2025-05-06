@@ -1,0 +1,82 @@
+name: Build and export MobileApp.ipa for AltStore
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_15.2.app/Contents/Developer
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install XcodeGen
+      run: brew install xcodegen
+
+    - name: Generate .xcodeproj
+      run: |
+        cd iosApp/MobileApp
+        xcodegen
+
+    - name: Set up signing (free Apple ID via AltStore)
+      run: |
+        mkdir -p ~/certs
+        security create-keychain -p "" build.keychain
+        security default-keychain -s build.keychain
+        security unlock-keychain -p "" build.keychain
+        security set-keychain-settings -t 3600 -u build.keychain
+        # Optional: Add pre-downloaded signing certificate if needed
+        echo "🔒 Warning: You must pre-provide a provisioning profile & signing identity unless using Xcode-managed signing"
+
+    - name: Build and archive app
+      run: |
+        cd iosApp/MobileApp
+        xcodebuild clean -project MobileApp.xcodeproj -scheme MobileApp -configuration Release
+        xcodebuild archive \
+          -project MobileApp.xcodeproj \
+          -scheme MobileApp \
+          -sdk iphoneos \
+          -configuration Release \
+          -archivePath ./build/MobileApp.xcarchive \
+          CODE_SIGN_STYLE=Automatic \
+          DEVELOPMENT_TEAM=<YOUR_TEAM_ID> \
+          CODE_SIGN_IDENTITY="Apple Development"
+
+    - name: Export .ipa (for AltStore)
+      run: |
+        cd iosApp/MobileApp
+        cat > exportOptions.plist <<EOF
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+          <key>method</key>
+          <string>development</string>
+          <key>signingStyle</key>
+          <string>automatic</string>
+          <key>compileBitcode</key>
+          <false/>
+          <key>destination</key>
+          <string>export</string>
+          <key>stripSwiftSymbols</key>
+          <true/>
+          <key>teamID</key>
+          <string><YOUR_TEAM_ID></string>
+        </dict>
+        </plist>
+        EOF
+
+        xcodebuild -exportArchive \
+          -archivePath ./build/MobileApp.xcarchive \
+          -exportOptionsPlist exportOptions.plist \
+          -exportPath ./build
+
+    - name: Upload .ipa as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: MobileApp-AltStore
+        path: iosApp/MobileApp/build/*.ipa
